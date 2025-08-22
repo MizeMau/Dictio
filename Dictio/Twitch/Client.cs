@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace Dictio.Twitch
 {
-    internal class Cliend
+    internal class Client
     {
         private readonly string usernameBot;        // Twitch username (lowercase)
         private readonly string channel = "#";           // Channel to join (lowercase, with #)
@@ -26,13 +26,14 @@ namespace Dictio.Twitch
         public EventHandler<IRCMessage> OnMessageRecieved;
 
         #endregion
-        public Cliend(string channel, string usernameBot = "mizemauu")
+        public Client(string channel, string usernameBot = "mizemauu")
         {
             _client = new ClientWebSocket();
             this.channel += channel.ToLower();
             this.usernameBot = usernameBot.ToLower();
 
-            string? token = Environment.GetEnvironmentVariable("TwitchChat");
+            string? token = Environment.GetEnvironmentVariable("TwitchChat")
+                .Trim();
             if (string.IsNullOrEmpty(token))
             {
                 throw new ArgumentException("OAuth token is not set in the environment variable 'TwitchChat'.");

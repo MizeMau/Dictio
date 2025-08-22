@@ -1,21 +1,23 @@
-﻿namespace Dictio
+﻿using Dictio.Twitch;
+
+namespace Dictio
 {
     internal class Program
     {
-        private static Twitch.Cliend _cliend;
+        private static Twitch.Client _client;
+        private static Aspectus.WebSocket _websocket;
         static void Main(string[] args)
         {
-            //_cliend = new Twitch.Cliend("mizemauu");
-            //_cliend.OnMessageRecieved += OnMessageReceived;
-            //await tts.GenerateAndPlayAsync($"Connected! Listening to {channel}...");
+            //_client = new Twitch.Client("mizemauu");
+            //_client.OnMessageRecieved += OnMessageReceived;
 
-            new Aspectus.WebSocket();
+            _websocket = new Aspectus.WebSocket();
             Task.Delay(Timeout.Infinite).Wait();
         }
 
-        static void OnMessageReceived(object sender, Twitch.IRCMessage e)
+        private static void OnMessageReceived(object? sender, IRCMessage ircMessagge)
         {
-
+            //_websocket.SendMessage(ircMessagge.Message);
         }
     }
 }
