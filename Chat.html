@@ -3,332 +3,115 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>WebSocket Chat Application</title>
-  <script src="https://cdn.jsdelivr.net/npm/vue@3.2.31/dist/vue.global.js"></script>
+  <title>WebSocket Chat</title>
   <style>
     body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background-color: #f5f5f5;
-      margin: 0;
-      padding: 20px;
+      background-color: black;
     }
-
-    .chat-container {
-      max-width: 800px;
-      margin: 0 auto;
-      background-color: white;
-      border-radius: 8px;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-      padding: 20px;
-    }
-
-    .status-indicator {
-      display: inline-block;
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      margin-right: 8px;
-    }
-
-    .status-disconnected {
-      background-color: #dc3545;
-    }
-
-    .status-connecting {
-      background-color: #ffc107;
-    }
-
-    .status-connected {
-      background-color: #28a745;
-    }
-
-    .status-error {
-      background-color: #dc3545;
-    }
-
-    .connection-controls {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 15px;
-      padding-bottom: 15px;
-      border-bottom: 1px solid #eee;
-    }
-
-    .btn {
-      padding: 8px 16px;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-weight: 500;
-    }
-
-    .btn-connect {
-      background-color: #28a745;
-      color: white;
-    }
-
-    .btn-disconnect {
-      background-color: #dc3545;
-      color: white;
-    }
-
-    .messages-container {
-      height: 400px;
-      overflow-y: auto;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      padding: 10px;
-      margin-bottom: 15px;
-      background-color: #fafafa;
-    }
-
     .message {
-      margin-bottom: 10px;
-      padding: 8px;
-      border-radius: 4px;
-      background-color: white;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      animation: fadeIn 1s ease;
+      color: white;
     }
-
-    .message-header {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 5px;
-      font-size: 0.9em;
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateX(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
     }
-
     .username {
       font-weight: bold;
-    }
-
-    .timestamp {
-      color: #777;
-      font-size: 0.8em;
-    }
-
-    .message-content {
-      word-break: break-word;
-    }
-
-    .system-message {
-      color: #777;
-      font-style: italic;
-      text-align: center;
-      margin: 10px 0;
     }
   </style>
 </head>
 <body>
-  <div id="app">
-    <div class="chat-container">
-      <div class="connection-controls">
-        <div>
-          <span class="status-indicator" :class="'status-' + connectionStatus"></span>
-          <span>{{ connectionStatusText }}</span>
-        </div>
-        <div>
-          <button v-if="!isConnected" @click="connectWebSocket" class="btn btn-connect">
-            Connect
-          </button>
-          <button v-else @click="disconnectWebSocket" class="btn btn-disconnect">
-            Disconnect
-          </button>
-        </div>
-      </div>
-
-      <div class="messages-container">
-        <div v-for="message in messages" :key="message.timestamp" class="message">
-          <div v-if="message.type === 'system'" class="system-message">
-            {{ message.content }}
-          </div>
-          <div v-else>
-            <div class="message-header">
-              <span class="username" :style="`color: ${message.Tags?.color || '#000'}`">
-                {{ message.Tags?.['display-name'] || 'Unknown' }}
-              </span>
-              <span class="timestamp">{{ formatTimestamp(message.timestamp) }}</span>
-            </div>
-            <div class="message-content">{{ message.Message || message.content }}</div>
-          </div>
-        </div>
-      </div>
-
-      <div>
-        <input v-model="newMessage"
-               @keyup.enter="sendMessage"
-               placeholder="Type a message and press Enter to send"
-               :disabled="!isConnected"
-               style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
-      </div>
+  <div>
+    <div id="messagesContainer">
     </div>
   </div>
 
   <script>
-        const { createApp, ref, computed, onMounted, onBeforeUnmount } = Vue;
+    // Application state
+    const state = {
+      websocket: null,
+      isConnected: false,
+      reconnectAttempts: 0,
+      maxReconnectAttempts: 5,
+      reconnectDelay: 3000,
+      websocketUrl: 'ws://127.0.0.1:9656/'
+    }
+    const messagesContainer = document.getElementById('messagesContainer')
 
-        createApp({
-            setup() {
-                const websocket = ref(null);
-                const isConnected = ref(false);
-                const connectionStatus = ref('disconnected');
-                const messages = ref([]);
-                const reconnectAttempts = ref(0);
-                const maxReconnectAttempts = 5;
-                const reconnectDelay = 3000;
-                const websocketUrl = 'ws://127.0.0.1:9656/';
-                const newMessage = ref('');
+    function renderMessage(message) {
+      const messageEl = document.createElement('div')
+      messageEl.className = 'message'
 
-                const connectionStatusText = computed(() => {
-                    const statusMap = {
-                        'disconnected': 'Disconnected',
-                        'connecting': 'Connecting...',
-                        'connected': 'Connected',
-                        'error': 'Connection Error'
-                    };
-                    return statusMap[connectionStatus.value] || connectionStatus.value;
-                });
+      const username = document.createElement('span')
+      username.className = 'username'
+      // Set username color if available
+      if (message.Tags && message.Tags.color) {
+        username.style.color = message.Tags.color
+      }
+      username.textContent = (message.Tags && message.Tags['display-name']) || 'Unknown'
 
-                const connectWebSocket = () => {
-                    if (isConnected.value) return;
+      const messageText = document.createElement('span')
+      messageText.className = 'message-content'
+      messageText.textContent = `: ${message.Message}`
 
-                    connectionStatus.value = 'connecting';
-                    reconnectAttempts.value = 0;
+      messageEl.appendChild(username)
+      messageEl.appendChild(messageText)
+      messagesContainer.appendChild(messageEl)
+      messagesContainer.scrollTop = messagesContainer.scrollHeight
+    }
+    function handleIncomingMessage(data) {
+      const parsedData = JSON.parse(data)
+      renderMessage(parsedData)
+    }
+    function connectWebSocket() {
+      if (state.isConnected) return
+      state.reconnectAttempts = 0
+      try {
+        state.websocket = new WebSocket(state.websocketUrl)
 
-                    try {
-                        websocket.value = new WebSocket(websocketUrl);
+        state.websocket.onopen = () => {
+          state.isConnected = true
+          state.reconnectAttempts = 0
+        }
+        state.websocket.onmessage = (event) => {
+          handleIncomingMessage(event.data)
+        };
+        state.websocket.onclose = (event) => {
+          state.isConnected = false
+          if (!event.wasClean) {
+            attemptReconnect()
+          }
+        }
+        state.websocket.onerror = (error) => {
+          console.error('WebSocket error:', error)
+        }
+      }
+      catch (error) {
+        console.error('WebSocket connection error:', error)
+      }
+    }
+    function attemptReconnect() {
+      if (state.reconnectAttempts < state.maxReconnectAttempts) {
+        state.reconnectAttempts++
 
-                        websocket.value.onopen = () => {
-                            isConnected.value = true;
-                            connectionStatus.value = 'connected';
-                            reconnectAttempts.value = 0;
-                            addSystemMessage('Connected to WebSocket server');
-                        };
+        setTimeout(() => {
+          connectWebSocket()
+        }, state.reconnectDelay)
+      }
+    }
+    function init() {
+      connectWebSocket()
+    }
 
-                        websocket.value.onmessage = (event) => {
-                            handleIncomingMessage(event.data);
-                        };
-
-                        websocket.value.onclose = (event) => {
-                            isConnected.value = false;
-                            connectionStatus.value = 'disconnected';
-
-                            if (!event.wasClean) {
-                                addSystemMessage(`Connection closed unexpectedly: ${event.code} ${event.reason}`);
-                                attemptReconnect();
-                            } else {
-                                addSystemMessage('Connection closed');
-                            }
-                        };
-
-                        websocket.value.onerror = (error) => {
-                            connectionStatus.value = 'error';
-                            addSystemMessage('WebSocket error occurred');
-                            console.error('WebSocket error:', error);
-                        };
-
-                    } catch (error) {
-                        connectionStatus.value = 'error';
-                        addSystemMessage('Failed to create WebSocket connection');
-                        console.error('WebSocket connection error:', error);
-                    }
-                };
-
-                const disconnectWebSocket = () => {
-                    if (websocket.value) {
-                        websocket.value.close(1000, 'User disconnected');
-                        websocket.value = null;
-                    }
-                    isConnected.value = false;
-                    connectionStatus.value = 'disconnected';
-                };
-
-                const attemptReconnect = () => {
-                    if (reconnectAttempts.value < maxReconnectAttempts) {
-                        reconnectAttempts.value++;
-                        addSystemMessage(`Attempting to reconnect (${reconnectAttempts.value}/${maxReconnectAttempts})...`);
-
-                        setTimeout(() => {
-                            connectWebSocket();
-                        }, reconnectDelay);
-                    } else {
-                        addSystemMessage('Max reconnection attempts reached. Please connect manually.');
-                    }
-                };
-
-                const handleIncomingMessage = (data) => {
-                    try {
-                        // Try to parse as JSON if it's a JSON string
-                        const parsedData = JSON.parse(data);
-                        parsedData.timestamp = new Date();
-                        messages.value.push(parsedData);
-                    } catch (error) {
-                        console.error('Error processing incoming message:', error);
-                        addSystemMessage('Error processing incoming message');
-                    }
-                };
-
-                const sendMessage = () => {
-                    if (!isConnected.value || !newMessage.value.trim()) return;
-
-                    try {
-                        websocket.value.send(newMessage.value);
-                        addMessage(newMessage.value, 'outgoing');
-                        newMessage.value = '';
-                    } catch (error) {
-                        console.error('Error sending message:', error);
-                        addSystemMessage('Error sending message');
-                    }
-                };
-
-                const addMessage = (content, type = 'incoming') => {
-                    messages.value.push({
-                        content,
-                        type,
-                        timestamp: new Date()
-                    });
-                };
-
-                const addSystemMessage = (content) => {
-                    messages.value.push({
-                        content,
-                        type: 'system',
-                        timestamp: new Date()
-                    });
-                };
-
-                const formatTimestamp = (timestamp) => {
-                    if (!timestamp) return '';
-
-                    const date = new Date(timestamp);
-                    return date.toLocaleTimeString();
-                };
-
-                onMounted(() => {
-                    // Auto-connect when component mounts (optional)
-                    connectWebSocket();
-                });
-
-                onBeforeUnmount(() => {
-                    // Clean up WebSocket connection when component is destroyed
-                    disconnectWebSocket();
-                });
-
-                return {
-                    websocket,
-                    isConnected,
-                    connectionStatus,
-                    messages,
-                    reconnectAttempts,
-                    newMessage,
-                    connectionStatusText,
-                    connectWebSocket,
-                    disconnectWebSocket,
-                    sendMessage,
-                    formatTimestamp
-                };
-            }
-        }).mount('#app');
+    document.addEventListener('DOMContentLoaded', init)
   </script>
 </body>
 </html>
