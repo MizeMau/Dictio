@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Dictio.Twitch;
+using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -6,14 +8,14 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace Dictio.Aspectus
 {
     internal class WebSocket
     {
         private TcpListener _server;
-        private NetworkStream _stream;
+        private Dictionary<Guid, NetworkStream> _streams = new();
 
         public Task ClientWorkerTask;
         internal WebSocket(string ip = "127.0.0.1", int port = 9656)
@@ -23,40 +25,65 @@ namespace Dictio.Aspectus
             Console.WriteLine($"Server has started on {ip}:{port}, Waiting for a connection…");
             ClientWorkerTask = Task.Run(ClientWorker);
         }
-
         private async Task ClientWorker()
         {
             while (true)
             {
-                TcpClient client = _server.AcceptTcpClient();
+                TcpClient client = await _server.AcceptTcpClientAsync();
                 Console.WriteLine("A client connected.");
-                await ReaderWorker(client);
+                _ = Task.Run(() => ReaderWorker(client));
             }
         }
 
+        // Helper method to check if client is connected
+        private bool IsClientConnected(TcpClient client)
+        {
+            try
+            {
+                if (client == null || !client.Connected)
+                    return false;
+
+                // More reliable connection check
+                if (client.Client.Poll(0, SelectMode.SelectRead))
+                {
+                    byte[] buff = new byte[1];
+                    if (client.Client.Receive(buff, SocketFlags.Peek) == 0)
+                    {
+                        return false;
+                    }
+                }
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
         private Task ReaderWorker(TcpClient client)
         {
-            _stream = client.GetStream();
-            while (client.Connected)
+            Guid id = Guid.NewGuid();
+            _streams.Add(id, client.GetStream());
+            while (IsClientConnected(client))
             {
-                if (!_stream.DataAvailable || client.Available < 3) continue;
+                if (!_streams[id].DataAvailable || client.Available < 3) continue;
 
                 byte[] bytes = new byte[client.Available];
-                _stream.Read(bytes, 0, bytes.Length);
+                _streams[id].Read(bytes, 0, bytes.Length);
                 string message = Encoding.UTF8.GetString(bytes);
 
                 if (Regex.IsMatch(message, "^GET", RegexOptions.IgnoreCase))
                 {
-                    HandleConnectMessage(message);
+                    HandleConnectMessage(message, id);
                     continue;
                 }
-                HandleMessage(message, bytes);
+                HandleMessage(message, bytes, id);
             }
+            _streams[id].Dispose();
             return Task.CompletedTask;
         }
 
         #region Handle Messages
-        private void HandleConnectMessage(string message)
+        private void HandleConnectMessage(string message, Guid id)
         {
             string swk = Regex.Match(message, @"Sec-WebSocket-Key:\s*(.+)").Groups[1].Value.Trim();
 
@@ -72,10 +99,10 @@ namespace Dictio.Aspectus
                 $"Sec-WebSocket-Accept: {swkAndSaltSha1Base64}\r\n" +
                 "\r\n";
 
-            SendRaw(response);  // <- raw, not framed!
+            SendRaw(response, id);  // <- raw, not framed!
         }
 
-        private void HandleMessage(string message, byte[] bytes)
+        private void HandleMessage(string message, byte[] bytes, Guid id)
         {
             bool fin = (bytes[0] & 0b10000000) != 0;
             bool mask = (bytes[1] & 0b10000000) != 0; // must be true, "All messages from the client to the server have this bit set"
@@ -83,7 +110,7 @@ namespace Dictio.Aspectus
             ulong msgLen = bytes[1] & (ulong)0b01111111;
 
             if (!mask) return;
-            switch(msgLen)
+            switch (msgLen)
             {
                 case 0:
                     return;
@@ -105,23 +132,33 @@ namespace Dictio.Aspectus
                 decoded[i] = (byte)(bytes[offset + i] ^ masks[i % 4]);
 
             string text = Encoding.UTF8.GetString(decoded);
-            SendMessage(text);
+            var test = new IRCMessage(text, true);
+            SendMessage(test, id);
         }
 
         #endregion
 
         #region Send Message
-        private void SendRaw(string text)
+        private void SendRaw(string text, Guid id)
         {
             byte[] bytes = Encoding.UTF8.GetBytes(text);
-            _stream.Write(bytes, 0, bytes.Length);
+            _streams[id].Write(bytes, 0, bytes.Length);
         }
 
-        public void SendMessage(string message)
+        public void SendMessage(IRCMessage ircMessage, Guid? id = null)
         {
+            string message = JsonConvert.SerializeObject(ircMessage);
             byte[] messageBytes = Encoding.UTF8.GetBytes(message);
             byte[] frame = CreateWebSocketFrame(messageBytes);
-            _stream.Write(frame, 0, frame.Length);
+            if (id.HasValue)
+            {
+                _streams[id.Value].Write(frame, 0, frame.Length);
+                return;
+            }
+            foreach (var stream in _streams)
+            {
+                stream.Value.Write(frame, 0, frame.Length);
+            }
         }
 
         private byte[] CreateWebSocketFrame(byte[] payload)

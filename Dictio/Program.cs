@@ -8,8 +8,8 @@ namespace Dictio
         private static Aspectus.WebSocket _websocket;
         static void Main(string[] args)
         {
-            //_client = new Twitch.Client("mizemauu");
-            //_client.OnMessageRecieved += OnMessageReceived;
+            _client = new Twitch.Client("mizemauu");
+            _client.OnMessageRecieved += OnMessageReceived;
 
             _websocket = new Aspectus.WebSocket();
             Task.Delay(Timeout.Infinite).Wait();
@@ -17,7 +17,7 @@ namespace Dictio
 
         private static void OnMessageReceived(object? sender, IRCMessage ircMessagge)
         {
-            //_websocket.SendMessage(ircMessagge.Message);
+            _websocket.SendMessage(ircMessagge);
         }
     }
 }

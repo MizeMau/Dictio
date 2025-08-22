@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Dictio.Twitch
 {
-    internal class IRCMessage
+    public class IRCMessage
     {
         public Dictionary<string, string> Tags { get; private set; } = new();
         public string Prefix { get; private set; } = "";
@@ -14,6 +14,10 @@ namespace Dictio.Twitch
         public List<string> Parameters { get; private set; } = new();
         public string Message { get; private set; } = "";
 
+        public IRCMessage(string message, bool test) 
+        {
+            Message = message;
+        }
         public IRCMessage(string rawMessage)
         {
             int pos = 0;
