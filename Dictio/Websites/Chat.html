@@ -20,7 +20,6 @@
         opacity: 0;
         transform: translateX(10px);
       }
-
       to {
         opacity: 1;
         transform: translateX(0);
@@ -42,7 +41,6 @@
         opacity: 1;
         transform: translateX(0);
       }
-
       to {
         opacity: 0;
         transform: translateX(-10px);
@@ -77,6 +75,9 @@
       if (message.Tags && message.Tags.color) {
         username.style.color = message.Tags.color
       }
+      else {
+        username.style.color = getRandomColor()
+      }
       username.textContent = (message.Tags && message.Tags['display-name']) || 'Unknown'
 
       const messageText = document.createElement('span')
@@ -92,11 +93,18 @@
         messageEl.addEventListener('animationend', () => {
           messageEl.remove()
         })
-      }, 10000)
+      }, 60000)
+    }
+    function getRandomColor() {
+      var letters = '0123456789ABCDEF';
+      var color = '#';
+      for (var i = 0; i < 6; i++) {
+        color += letters[Math.floor(Math.random() * 16)];
+      }
+      return color;
     }
     function handleIncomingMessage(data) {
       const parsedData = JSON.parse(data)
-      console.log('parsedData', parsedData)
       renderMessage(parsedData)
     }
     function connectWebSocket() {
