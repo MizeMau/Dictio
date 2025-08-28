@@ -10,7 +10,7 @@ namespace Dictio.Twitch
 {
     internal class Client
     {
-        private readonly string usernameBot;        // Twitch username (lowercase)
+        private readonly string usernameBot;             // Twitch username (lowercase)
         private readonly string channel = "#";           // Channel to join (lowercase, with #)
         /// <summary>
         /// The tutorial to create the token can be found in this video
@@ -33,7 +33,7 @@ namespace Dictio.Twitch
             this.usernameBot = usernameBot.ToLower();
 
             string? token = Environment.GetEnvironmentVariable("TwitchChat")
-                .Trim();
+                ?.Trim();
             if (string.IsNullOrEmpty(token))
             {
                 throw new ArgumentException("OAuth token is not set in the environment variable 'TwitchChat'.");
