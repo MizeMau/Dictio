@@ -101,6 +101,11 @@ namespace Dictio.Twitch
                 {
                     var chatMessage = new IRCMessage(msg);
                     Console.WriteLine($"{chatMessage.Tags.GetValueOrDefault("display-name", "unknown")}: {chatMessage.Message}");
+                    if (await Checkcommand(chatMessage))
+                        continue;
+
+                    // set a random color for users without a set color
+
                     OnMessageRecieved.Invoke(this, chatMessage);
                     continue;
                 }
@@ -109,10 +114,26 @@ namespace Dictio.Twitch
             }
         }
 
+        private async Task<bool> Checkcommand(IRCMessage ircMessage)
+        {
+            if (ircMessage.Message == "!discord")
+            {
+                await Send($@"PRIVMSG {channel} :https://discord.gg/");
+                return true;
+            }
+            return false;
+        }
+
         private Task Send(string message)
         {
             var bytes = Encoding.UTF8.GetBytes(message + "\r\n");
             return _client.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
         }
+
+        /* [RAW] :mizemauu!mizemauu@mizemauu.tmi.twitch.tv PART #mizemauu
+         * someone joined the chat
+         * Set color for the person and later delete it so the browserChat is consistend
+         * this is only done, when the person has no color
+         */
     }
 }

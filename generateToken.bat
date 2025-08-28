@@ -2,7 +2,7 @@
 setlocal enabledelayedexpansion
 
 REM Run twitch token and save output to a temp file
-twitch token -u -s "chat:read" > token_output.txt 2>&1
+twitch token -u -s "chat:read chat:edit" > token_output.txt 2>&1
 
 REM Print all lines to the console
 type token_output.txt
