@@ -12,6 +12,7 @@ namespace Dictio
             string channel = "mizemauu";
             _client = new Twitch.Client(channel);
             _client.OnMessageRecieved += OnMessageReceived;
+            new TwitchEventSubWebSocket();
 
             _websocket = new Websites.WebSocket();
 
