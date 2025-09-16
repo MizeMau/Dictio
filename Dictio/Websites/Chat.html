@@ -65,35 +65,83 @@
     }
     const messagesContainer = document.getElementById('messagesContainer')
 
+    const badges = new Map();
+    badges.set("broadcaster", "https://static-cdn.jtvnw.net/badges/v1/5527c58c-fb7d-422d-b71b-f309dcb85cc1/1"); // ✅
+    badges.set("twitch_staff", "https://static-cdn.jtvnw.net/badges/v1/d97c37bd-a6f5-4c38-8f57-4e4bef88af34/1");
+    badges.set("chat_moderator", "https://static-cdn.jtvnw.net/badges/v1/3267646d-33f0-4b17-b3df-f923a41db1d0/1");
+    badges.set("partner", "https://static-cdn.jtvnw.net/badges/v1/d12a2e27-16f6-41d0-ab77-b780518f00a3/3");
+    badges.set("vip", "https://static-cdn.jtvnw.net/badges/v1/b817aba4-fad8-49e2-b88a-7cc744dfa6ec/3");
+    badges.set("ambassador", "https://assets.help.twitch.tv/article/img/ambassador-badge.png");
+    badges.set("dj", "https://assets.help.twitch.tv/article/img/DJ-badge.png");
+    badges.set("chat_bot", "https://assets.help.twitch.tv/article/img/000002722-19.png");
+    badges.set("artist", "https://assets.help.twitch.tv/article/img/000002399-05.png");
+    badges.set("no_video", "https://assets.help.twitch.tv/article/img/659115-05.png"); // ✅
+    badges.set("no_audio", "https://assets.help.twitch.tv/article/img/659115-04.png"); // ✅
+    badges.set("turbo", "https://static-cdn.jtvnw.net/badges/v1/bd444ec6-8f34-4bf9-91f4-af1e3428d80f/1");
+    badges.set("premium", "https://static-cdn.jtvnw.net/badges/v1/a1dd5073-19c3-4911-8cb4-c464a7bc1510/1"); // ✅
+
     function renderMessage(message) {
+      const messageEl = document.createElement('div');
+      messageEl.className = 'message';
 
-      const messageEl = document.createElement('div')
-      messageEl.className = 'message'
-
-      const username = document.createElement('span')
-      username.className = 'username'
-      if (message.Tags && message.Tags.color) {
-        username.style.color = message.Tags.color
+      // --- BADGES ---
+      if (message.Badges && Array.isArray(message.Badges)) {
+        message.Badges.forEach(badge => {
+          const badgeImg = document.createElement('img');
+          badgeImg.src = `${badges.get(badge.SetId)}`;
+          badgeImg.style.height = "18px";
+          badgeImg.style.marginRight = "4px";
+          messageEl.appendChild(badgeImg);
+        });
       }
-      else {
-        username.style.color = getRandomColor()
+
+      // --- USERNAME ---
+      const username = document.createElement('span');
+      username.className = 'username';
+      if (message.Color) {
+        username.style.color = message.Color;
+      } else {
+        username.style.color = getRandomColor();
       }
-      username.textContent = (message.Tags && message.Tags['display-name']) || 'Unknown'
+      username.textContent = message.ChatterUserName || 'Unknown';
+      messageEl.appendChild(username);
 
-      const messageText = document.createElement('span')
-      messageText.className = 'message-text'
-      messageText.textContent = ` ${message.Message}`
+      // --- MESSAGE CONTENT ---
+      const messageText = document.createElement('span');
+      messageText.className = 'message-text';
+      messageText.style.marginLeft = "0.5rem";
 
-      messageEl.appendChild(username)
-      messageEl.appendChild(messageText)
-      messagesContainer.insertBefore(messageEl, messagesContainer.firstChild)
+      message.Message.Fragments.forEach(fragment => {
+        if (fragment.Type === "text") {
+          const textNode = document.createTextNode(fragment.Text);
+          messageText.appendChild(textNode);
+        }
+        else if (fragment.Type === "emote") {
+          const emoteImg = document.createElement('img');
+          // Twitch emote URL (requires emote id)
+          emoteImg.src = `https://static-cdn.jtvnw.net/emoticons/v2/${fragment.Emote.ID}/default/dark/1.0`;
+          emoteImg.alt = fragment.Text;
+          emoteImg.style.height = "20px";
+          emoteImg.style.verticalAlign = "middle";
+          messageText.appendChild(emoteImg);
+        }
+        else if (fragment.Type === "mention" && fragment.mention) {
+          const mentionSpan = document.createElement('span');
+          mentionSpan.textContent = fragment.text;
+          mentionSpan.style.color = "#00FFFF"; // highlight mentions
+          messageText.appendChild(mentionSpan);
+        }
+      });
+
+      messageEl.appendChild(messageText);
+      messagesContainer.insertBefore(messageEl, messagesContainer.firstChild);
 
       setTimeout(() => {
-        messageEl.classList.add('fade-out')
+        messageEl.classList.add('fade-out');
         messageEl.addEventListener('animationend', () => {
-          messageEl.remove()
-        })
-      }, 60000)
+          messageEl.remove();
+        });
+      }, 120000);
     }
     function getRandomColor() {
       var letters = '0123456789ABCDEF';
@@ -105,6 +153,7 @@
     }
     function handleIncomingMessage(data) {
       const parsedData = JSON.parse(data)
+      console.log('parsedData', parsedData)
       renderMessage(parsedData)
     }
     function connectWebSocket() {

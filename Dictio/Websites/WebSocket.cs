@@ -122,8 +122,6 @@ namespace Dictio.Websites
                 decoded[i] = (byte)(buffer[offset + (int)i] ^ masks[i % 4]);
 
             string text = Encoding.UTF8.GetString(decoded);
-            var ircMessage = new IRCMessage(text, true);
-            SendMessage(ircMessage, id);
         }
         #endregion
 
@@ -137,7 +135,7 @@ namespace Dictio.Websites
             }
         }
 
-        public void SendMessage(IRCMessage ircMessage, Guid? id = null)
+        public void SendMessage(TwitchChatMessage ircMessage, Guid? id = null)
         {
             string message = JsonConvert.SerializeObject(ircMessage);
             byte[] payload = Encoding.UTF8.GetBytes(message);

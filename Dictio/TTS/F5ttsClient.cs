@@ -14,7 +14,7 @@ namespace Dictio.TTS
     {
         private readonly string _ttsURL;
         private readonly HttpClient _client = new HttpClient();
-        private readonly List<string> _speakers = new() { "Lina", "Nele" };
+        private readonly List<string> _speakers = new() { "Lina" };// "Nele"
 
         public F5ttsClient(string url = "http://localhost:7860/gradio_api/call")
         {

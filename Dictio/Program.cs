@@ -4,15 +4,16 @@ namespace Dictio
 {
     internal class Program
     {
-        private static Twitch.Client _client;
+        private static Twitch.TwitchEventSubWebSocket _twitchEventSubWebSocket;
         private static Websites.WebSocket _websocket;
         private static TTS.F5ttsClient _tts;
         static void Main(string[] args)
         {
             string channel = "mizemauu";
-            _client = new Twitch.Client(channel);
-            _client.OnMessageRecieved += OnMessageReceived;
-            new TwitchEventSubWebSocket();
+            //_client = new Twitch.Client(channel);
+            //_client.OnMessageRecieved += OnMessageReceived;
+            _twitchEventSubWebSocket = new TwitchEventSubWebSocket();
+            _twitchEventSubWebSocket.OnMessageRecieved += OnMessageReceived;
 
             _websocket = new Websites.WebSocket();
 
@@ -22,10 +23,16 @@ namespace Dictio
             Task.Delay(Timeout.Infinite).Wait();
         }
 
-        private static void OnMessageReceived(object? sender, IRCMessage ircMessagge)
+        private static void OnMessageReceived(object? sender, TwitchChatMessage twitchChatMessage)
         {
-            _websocket.SendMessage(ircMessagge);
-            _tts.PlayText(ircMessagge.Message).GetAwaiter().GetResult();
+            _websocket.SendMessage(twitchChatMessage);
+            string message = "";
+            foreach (var twitchChatMessageFragments in twitchChatMessage.Message.Fragments)
+            {
+                if (twitchChatMessageFragments.Type != "text") continue;
+                message += twitchChatMessageFragments.Text;
+            }
+            _tts.PlayText(message).GetAwaiter().GetResult();
         }
     }
 }

@@ -93,7 +93,7 @@ namespace Dictio.Twitch
         public object Cheermote { get; set; }
 
         [JsonPropertyName("emote")]
-        public object Emote { get; set; }
+        public Emote Emote { get; set; }
 
         [JsonPropertyName("mention")]
         public object Mention { get; set; }
@@ -109,5 +109,20 @@ namespace Dictio.Twitch
 
         [JsonPropertyName("info")]
         public string Info { get; set; }
+    }
+
+    public class Emote
+    {
+        [JsonPropertyName("id")]
+        public string ID { get; set; }
+
+        [JsonPropertyName("emote_set_id")]
+        public string EmoteSetID { get; set; }
+
+        [JsonPropertyName("owner_id")]
+        public string OwnerID { get; set; }
+
+        [JsonPropertyName("format")]
+        public List<string> Format { get; set; }
     }
 }

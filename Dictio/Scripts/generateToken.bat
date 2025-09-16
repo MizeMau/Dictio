@@ -1,15 +1,15 @@
 @echo off
 setlocal enabledelayedexpansion
 
-REM Run twitch token and save output to a temp file
-twitch token -u -s "chat:read chat:edit moderator:read:followers user:read:chat" > token_output.txt 2>&1
-
-REM Print all lines to the console
-type token_output.txt
-
-REM Read the token line from the file
-set "TOKEN="
-for /f "delims=" %%L in ('findstr /c:"User Access Token:" token_output.txt') do set "LINE=%%L"
+REM Run twitch token command and capture output
+set "LINE="
+for /f "delims=" %%L in ('twitch token -u -s "chat:read chat:edit moderator:read:followers user:read:chat user:read:emotes" 2^>^&1') do (
+    echo %%L
+    echo %%L | findstr /c:"User Access Token:" >nul
+    if not errorlevel 1 (
+        set "LINE=%%L"
+    )
+)
 
 if defined LINE (
     REM Remove everything up to the colon and space

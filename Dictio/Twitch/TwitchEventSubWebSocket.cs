@@ -23,6 +23,8 @@ namespace Dictio.Twitch
 
         public Task ReaderWorkerTask;
 
+        public EventHandler<TwitchChatMessage> OnMessageRecieved;
+
         public TwitchEventSubWebSocket()
         {
             _client = new ClientWebSocket();
@@ -81,6 +83,8 @@ namespace Dictio.Twitch
                 }
 
                 var message = Encoding.UTF8.GetString(buffer, 0, result.Count);
+                if (message.Contains("session_keepalive"))
+                    continue;
                 Console.WriteLine("[DEBUG] Message received:");
                 Console.WriteLine(message);
 
@@ -106,32 +110,38 @@ namespace Dictio.Twitch
                     }
                     else if (messageType == "notification")
                     {
-                        var subscriptionType = root
-                            .GetProperty("payload")
-                            .GetProperty("subscription")
-                            .GetProperty("type")
-                            .GetString();
-
-                        if (subscriptionType == "channel.chat.message")
-                        {
-                            var eventData = root.GetProperty("payload").GetProperty("event");
-                            var twitchChatMessage = JsonSerializer.Deserialize<TwitchChatMessage>(eventData);
-
-                            Console.WriteLine($"[CHAT] {twitchChatMessage.ChatterUserName}: {twitchChatMessage.Message}");
-                        }
-                        else if (subscriptionType == "channel.follow")
-                        {
-                            var eventData = root.GetProperty("payload").GetProperty("event");
-                            string follower = eventData.GetProperty("user_name").GetString();
-
-                            Console.WriteLine($"[FOLLOW] {follower} followed!");
-                        }
+                        HandleMessage(root.GetProperty("payload"));
                     }
                 }
                 catch (Exception ex)
                 {
                     Console.WriteLine("[ERROR] Failed to parse JSON: " + ex.Message);
                 }
+            }
+        }
+        private void HandleMessage(JsonElement payload)
+        {
+            var subscriptionType = payload
+                            .GetProperty("subscription")
+                            .GetProperty("type")
+                            .GetString();
+
+            JsonElement eventData;
+            switch (subscriptionType)
+            {
+                case "channel.chat.message":
+                    eventData = payload.GetProperty("event");
+                    var twitchChatMessage = JsonSerializer.Deserialize<TwitchChatMessage>(eventData);
+                    OnMessageRecieved.Invoke(this, twitchChatMessage);
+
+                    Console.WriteLine($"[CHAT] {twitchChatMessage.ChatterUserName}: {twitchChatMessage.Message}");
+                    break;
+                case "channel.follow":
+                    eventData = payload.GetProperty("event");
+                    string follower = eventData.GetProperty("user_name").GetString();
+
+                    Console.WriteLine($"[FOLLOW] {follower} followed!");
+                    break;
             }
         }
 
