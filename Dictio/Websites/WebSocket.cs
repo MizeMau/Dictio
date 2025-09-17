@@ -1,5 +1,4 @@
-﻿using Dictio.Twitch;
-using Newtonsoft.Json;
+﻿using Newtonsoft.Json;
 using System;
 using System.Collections.Concurrent;
 using System.IO;
@@ -135,9 +134,8 @@ namespace Dictio.Websites
             }
         }
 
-        public void SendMessage(TwitchChatMessage ircMessage, Guid? id = null)
+        public void SendMessage(string message, Guid? id = null)
         {
-            string message = JsonConvert.SerializeObject(ircMessage);
             byte[] payload = Encoding.UTF8.GetBytes(message);
             byte[] frame = CreateWebSocketFrame(payload);
 

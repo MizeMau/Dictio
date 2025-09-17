@@ -15,6 +15,9 @@
       animation: fadeIn 1s ease;
       padding-bottom: 1rem;
     }
+    .fade-in {
+      animation: fadeIn 0.5s ease;
+    }
     @keyframes fadeIn {
       from {
         opacity: 0;
@@ -46,10 +49,25 @@
         transform: translateX(-10px);
       }
     }
+    .followerImg {
+      width: 15rem;
+      display: block;
+      margin: auto;
+    }
   </style>
 </head>
 <body>
   <div>
+    <div style="width: 100%; display: none" 
+         id="FollowerContainer"
+         class="fade-in">
+      <img src="https://i.gifer.com/origin/de/dea8f93fb360e56d2a55f6612a8943f3_w200.gif" 
+           class="followerImg" />
+      <div class="message-text" 
+           style="text-align: center; font-size: 2rem">
+        <span id="FollowerUserName">MizeMauu</span> just followed
+      </div>
+    </div>
     <div id="messagesContainer">
     </div>
   </div>
@@ -80,6 +98,21 @@
     badges.set("turbo", "https://static-cdn.jtvnw.net/badges/v1/bd444ec6-8f34-4bf9-91f4-af1e3428d80f/1");
     badges.set("premium", "https://static-cdn.jtvnw.net/badges/v1/a1dd5073-19c3-4911-8cb4-c464a7bc1510/1"); // ✅
 
+    function renderFollower(message) {
+      const container = document.getElementById('FollowerContainer')
+      const userName = document.getElementById('FollowerUserName')
+      userName.innerText = message.UserName
+      container.style.display = 'unset'
+      setTimeout(() => {
+        container.classList.add('fade-out');
+        const handleAnimationEnd = () => {
+          container.classList.remove('fade-out');
+          container.style.display = 'none';
+          container.removeEventListener('animationend', handleAnimationEnd);
+        };
+        container.addEventListener('animationend', handleAnimationEnd);
+      }, 10000);
+    }
     function renderMessage(message) {
       const messageEl = document.createElement('div');
       messageEl.className = 'message';
@@ -154,7 +187,14 @@
     function handleIncomingMessage(data) {
       const parsedData = JSON.parse(data)
       console.log('parsedData', parsedData)
-      renderMessage(parsedData)
+      switch (parsedData.EventType) {
+        case 'TwitchChatMessage':
+          renderMessage(parsedData)
+          break
+        case 'TwitchFollower':
+          renderFollower(parsedData)
+          break
+      }
     }
     function connectWebSocket() {
       if (state.isConnected) return

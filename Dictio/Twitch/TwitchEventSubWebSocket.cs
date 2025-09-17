@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Dictio.Twitch.Events;
+using System;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.WebSockets;
@@ -24,6 +25,7 @@ namespace Dictio.Twitch
         public Task ReaderWorkerTask;
 
         public EventHandler<TwitchChatMessage> OnMessageRecieved;
+        public EventHandler<TwitchFollower> OnFollowerRecieved;
 
         public TwitchEventSubWebSocket()
         {
@@ -105,7 +107,7 @@ namespace Dictio.Twitch
                         Console.WriteLine($"[INFO] Session Welcome received. Session ID: {sessionId}");
                         Console.WriteLine("[INFO] Subscribing to channel.follow + channel.chat.message...");
 
-                        //await SubscribeToChannelFollow(sessionId);
+                        await SubscribeToChannelFollow(sessionId);
                         await SubscribeToChannelChatMessage(sessionId);
                     }
                     else if (messageType == "notification")
@@ -138,9 +140,10 @@ namespace Dictio.Twitch
                     break;
                 case "channel.follow":
                     eventData = payload.GetProperty("event");
-                    string follower = eventData.GetProperty("user_name").GetString();
+                    var twitchFollower = JsonSerializer.Deserialize<TwitchFollower>(eventData);
+                    OnFollowerRecieved.Invoke(this, twitchFollower);
 
-                    Console.WriteLine($"[FOLLOW] {follower} followed!");
+                    Console.WriteLine($"[FOLLOW] {twitchFollower.UserName} followed!");
                     break;
             }
         }

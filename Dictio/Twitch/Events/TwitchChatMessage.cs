@@ -5,10 +5,12 @@ using System.Text;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
-namespace Dictio.Twitch
+namespace Dictio.Twitch.Events
 {
     public class TwitchChatMessage
     {
+        public string EventType => "TwitchChatMessage";
+
         [JsonPropertyName("broadcaster_user_id")]
         public string BroadcasterUserId { get; set; }
 
