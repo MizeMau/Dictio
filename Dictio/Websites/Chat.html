@@ -53,6 +53,7 @@
       width: 15rem;
       display: block;
       margin: auto;
+      border-radius: 10px;
     }
   </style>
 </head>
@@ -66,6 +67,16 @@
       <div class="message-text" 
            style="text-align: center; font-size: 2rem">
         <span id="FollowerUserName">MizeMauu</span> just followed
+      </div>
+    </div>
+    <div style="width: 100%; display: none" 
+         id="RaidContainer"
+         class="fade-in">
+      <img src="https://external-preview.redd.it/zR3UR3s886LUAIiN6m9a5RKHX2_hxJlclzot0ufjEiU.jpg?width=640&crop=smart&auto=webp&s=33a779759d3e9ed5dd74b3ff497ae2e80cd6dbbd" 
+           class="followerImg" />
+      <div class="message-text" 
+           style="text-align: center; font-size: 2rem">
+        <span id="RaidUserName"></span> raided with <span id="RaidViews"></span> Viewers!
       </div>
     </div>
     <div id="messagesContainer">
@@ -86,7 +97,7 @@
     const badges = new Map();
     badges.set("broadcaster", "https://static-cdn.jtvnw.net/badges/v1/5527c58c-fb7d-422d-b71b-f309dcb85cc1/1"); // ✅
     badges.set("twitch_staff", "https://static-cdn.jtvnw.net/badges/v1/d97c37bd-a6f5-4c38-8f57-4e4bef88af34/1");
-    badges.set("chat_moderator", "https://static-cdn.jtvnw.net/badges/v1/3267646d-33f0-4b17-b3df-f923a41db1d0/1");
+    badges.set("moderator", "https://static-cdn.jtvnw.net/badges/v1/3267646d-33f0-4b17-b3df-f923a41db1d0/1"); // ✅
     badges.set("partner", "https://static-cdn.jtvnw.net/badges/v1/d12a2e27-16f6-41d0-ab77-b780518f00a3/3");
     badges.set("vip", "https://static-cdn.jtvnw.net/badges/v1/b817aba4-fad8-49e2-b88a-7cc744dfa6ec/3");
     badges.set("ambassador", "https://assets.help.twitch.tv/article/img/ambassador-badge.png");
@@ -97,6 +108,25 @@
     badges.set("no_audio", "https://assets.help.twitch.tv/article/img/659115-04.png"); // ✅
     badges.set("turbo", "https://static-cdn.jtvnw.net/badges/v1/bd444ec6-8f34-4bf9-91f4-af1e3428d80f/1");
     badges.set("premium", "https://static-cdn.jtvnw.net/badges/v1/a1dd5073-19c3-4911-8cb4-c464a7bc1510/1"); // ✅
+    badges.set("rplace-2023", "https://static-cdn.jtvnw.net/badges/v1/e33e0c67-c380-4241-828a-099c46e51c66/1"); // ✅
+
+    function renderRaid(message) {
+      const container = document.getElementById('RaidContainer')
+      const userName = document.getElementById('RaidUserName')
+      const views = document.getElementById('RaidViews')
+      userName.innerText = message.FromBroadcasterUserName
+      views.innerText = message.Viewers
+      container.style.display = 'unset'
+      setTimeout(() => {
+        container.classList.add('fade-out');
+        const handleAnimationEnd = () => {
+          container.classList.remove('fade-out');
+          container.style.display = 'none';
+          container.removeEventListener('animationend', handleAnimationEnd);
+        };
+        container.addEventListener('animationend', handleAnimationEnd);
+      }, 10000);
+    }
 
     function renderFollower(message) {
       const container = document.getElementById('FollowerContainer')
@@ -115,6 +145,7 @@
     }
     function renderMessage(message) {
       const messageEl = document.createElement('div');
+      messageEl.id = message.MessageId
       messageEl.className = 'message';
 
       // --- BADGES ---
@@ -176,6 +207,11 @@
         });
       }, 120000);
     }
+    function removeMessage(message) {
+      var msgElement = document.getElementById(message.MessageId)
+      if (msgElement == null) return
+      msgElement.remove();
+    }
     function getRandomColor() {
       var letters = '0123456789ABCDEF';
       var color = '#';
@@ -191,8 +227,14 @@
         case 'TwitchChatMessage':
           renderMessage(parsedData)
           break
+        case 'TwitchChatMessageDelete':
+          removeMessage(parsedData)
+          break
         case 'TwitchFollower':
           renderFollower(parsedData)
+          break
+        case 'TwitchRaid':
+          renderRaid(parsedData)
           break
       }
     }

@@ -13,10 +13,14 @@ namespace Dictio
         {
             string channel = "mizemauu";
             _twitchEventSubWebSocket = new TwitchEventSubWebSocket();
-            _twitchEventSubWebSocket.OnMessageRecieved += OnMessageReceived;
-            _twitchEventSubWebSocket.OnFollowerRecieved += OnFollowerReceived;
+            _twitchEventSubWebSocket.OnMessageRecieved += OnMessageRecieved;
+            _twitchEventSubWebSocket.OnMessageDeleteRecieved += OnMessageDeleteRecieved;
+            _twitchEventSubWebSocket.OnFollowerRecieved += OnFollowerRecieved;
+            _twitchEventSubWebSocket.OnRaidRecieved += OnRaidRecieved;
 
             _websocket = new Websites.WebSocket();
+
+            new Twitch.Client(channel);
 
             _tts = new TTS.F5ttsClient();
             _tts.PlayText($"Listening to {channel}").GetAwaiter().GetResult();
@@ -35,7 +39,7 @@ namespace Dictio
                 if (string.IsNullOrWhiteSpace(input)) continue;
             }
         }
-        private static void OnMessageReceived(object? sender, TwitchChatMessage twitchChatMessage)
+        private static void OnMessageRecieved(object? sender, TwitchChatMessage twitchChatMessage)
         {
             string messageJSON = JsonConvert.SerializeObject(twitchChatMessage);
             _websocket.SendMessage(messageJSON);
@@ -45,15 +49,29 @@ namespace Dictio
                 if (twitchChatMessageFragments.Type != "text") continue;
                 message += twitchChatMessageFragments.Text;
             }
+            if (twitchChatMessage.ChatterUserLogin == "mizemauu") return;
+            if (message.ToLower() == "xd") return;
             _tts.PlayText(message).GetAwaiter().GetResult();
         }
-
-        private static void OnFollowerReceived(object? sender, TwitchFollower twitchFollower)
+        private static void OnMessageDeleteRecieved(object? sender, TwitchChatMessageDelete twitchChatMessageDelete)
+        {
+            string messageJSON = JsonConvert.SerializeObject(twitchChatMessageDelete);
+            _websocket.SendMessage(messageJSON);
+        }
+        private static void OnFollowerRecieved(object? sender, TwitchFollower twitchFollower)
         {
             string messageJSON = JsonConvert.SerializeObject(twitchFollower);
             _websocket.SendMessage(messageJSON);
 
             string message = $"{twitchFollower.UserName} followed!";
+            _tts.PlayText(message).GetAwaiter().GetResult();
+        }
+        private static void OnRaidRecieved(object? sender, TwitchRaid twitchRaid)
+        {
+            string messageJSON = JsonConvert.SerializeObject(twitchRaid);
+            _websocket.SendMessage(messageJSON);
+
+            string message = $"{twitchRaid.FromBroadcasterUserName} Raided the stream with {twitchRaid.Viewers} Views!";
             _tts.PlayText(message).GetAwaiter().GetResult();
         }
     }

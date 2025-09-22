@@ -3,7 +3,7 @@ setlocal enabledelayedexpansion
 
 REM Run twitch token command and capture output
 set "LINE="
-for /f "delims=" %%L in ('twitch token -u -s "chat:read chat:edit moderator:read:followers user:read:chat user:read:emotes" 2^>^&1') do (
+for /f "delims=" %%L in ('twitch token -u -s "chat:read chat:write chat:edit moderator:read:followers user:read:chat user:read:emotes" 2^>^&1') do (
     echo %%L
     echo %%L | findstr /c:"User Access Token:" >nul
     if not errorlevel 1 (

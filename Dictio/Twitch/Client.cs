@@ -21,11 +21,6 @@ namespace Dictio.Twitch
 
         public Task ReaderWorkerTask;
 
-        #region events
-
-        public EventHandler<IRCMessage> OnMessageRecieved;
-
-        #endregion
         public Client(string channel, string usernameBot = "mizemauu")
         {
             _client = new ClientWebSocket();
@@ -101,12 +96,7 @@ namespace Dictio.Twitch
                 {
                     var chatMessage = new IRCMessage(msg);
                     Console.WriteLine($"{chatMessage.Tags.GetValueOrDefault("display-name", "unknown")}: {chatMessage.Message}");
-                    if (await Checkcommand(chatMessage))
-                        continue;
-
-                    // set a random color for users without a set color
-
-                    OnMessageRecieved.Invoke(this, chatMessage);
+                    await Checkcommand(chatMessage);
                     continue;
                 }
                 //Print other raw messages for info
@@ -129,11 +119,5 @@ namespace Dictio.Twitch
             var bytes = Encoding.UTF8.GetBytes(message + "\r\n");
             return _client.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
         }
-
-        /* [RAW] :mizemauu!mizemauu@mizemauu.tmi.twitch.tv PART #mizemauu
-         * someone joined the chat
-         * Set color for the person and later delete it so the browserChat is consistend
-         * this is only done, when the person has no color
-         */
     }
 }

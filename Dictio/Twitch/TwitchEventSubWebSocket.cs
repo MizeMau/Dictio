@@ -25,7 +25,9 @@ namespace Dictio.Twitch
         public Task ReaderWorkerTask;
 
         public EventHandler<TwitchChatMessage> OnMessageRecieved;
+        public EventHandler<TwitchChatMessageDelete> OnMessageDeleteRecieved;
         public EventHandler<TwitchFollower> OnFollowerRecieved;
+        public EventHandler<TwitchRaid> OnRaidRecieved;
 
         public TwitchEventSubWebSocket()
         {
@@ -105,10 +107,11 @@ namespace Dictio.Twitch
                             .GetString();
 
                         Console.WriteLine($"[INFO] Session Welcome received. Session ID: {sessionId}");
-                        Console.WriteLine("[INFO] Subscribing to channel.follow + channel.chat.message...");
 
                         await SubscribeToChannelFollow(sessionId);
                         await SubscribeToChannelChatMessage(sessionId);
+                        await SubscribeToChannelChatMessageDelete(sessionId);
+                        await SubscribeToChannelRaid(sessionId);
                     }
                     else if (messageType == "notification")
                     {
@@ -138,6 +141,13 @@ namespace Dictio.Twitch
 
                     Console.WriteLine($"[CHAT] {twitchChatMessage.ChatterUserName}: {twitchChatMessage.Message}");
                     break;
+                case "channel.chat.message_delete":
+                    eventData = payload.GetProperty("event");
+                    var twitchChatMessageDelete = JsonSerializer.Deserialize<TwitchChatMessageDelete>(eventData);
+                    OnMessageDeleteRecieved.Invoke(this, twitchChatMessageDelete);
+
+                    Console.WriteLine($"[CHAT] Message deleted from user: {twitchChatMessageDelete.TargetUserName}");
+                    break;
                 case "channel.follow":
                     eventData = payload.GetProperty("event");
                     var twitchFollower = JsonSerializer.Deserialize<TwitchFollower>(eventData);
@@ -145,7 +155,33 @@ namespace Dictio.Twitch
 
                     Console.WriteLine($"[FOLLOW] {twitchFollower.UserName} followed!");
                     break;
+                case "channel.raid":
+                    eventData = payload.GetProperty("event");
+                    var twitchRaid = JsonSerializer.Deserialize<TwitchRaid>(eventData);
+                    OnRaidRecieved.Invoke(this, twitchRaid);
+
+                    Console.WriteLine($"[Raid] {twitchRaid.FromBroadcasterUserName} Raided the stream with {twitchRaid.Viewers} Views!");
+                    break;
             }
+        }
+
+        #region subscribtions
+        private async Task SubscribeToChannelRaid(string sessionId)
+        {
+            await CreateSubscription(new
+            {
+                type = "channel.raid",
+                version = "1",
+                condition = new
+                {
+                    to_broadcaster_user_id = _broadcasterId
+                },
+                transport = new
+                {
+                    method = "websocket",
+                    session_id = sessionId
+                }
+            });
         }
 
         private async Task SubscribeToChannelFollow(string sessionId)
@@ -187,6 +223,25 @@ namespace Dictio.Twitch
             });
         }
 
+        private async Task SubscribeToChannelChatMessageDelete(string sessionId)
+        {
+            await CreateSubscription(new
+            {
+                type = "channel.chat.message_delete",
+                version = "1",
+                condition = new
+                {
+                    broadcaster_user_id = _broadcasterId,
+                    user_id = _moderatorId, // can be same as broadcaster if you want your own chat
+                },
+                transport = new
+                {
+                    method = "websocket",
+                    session_id = sessionId
+                }
+            });
+        }
+
         private async Task CreateSubscription(object body)
         {
             using var httpClient = new HttpClient();
@@ -213,5 +268,6 @@ namespace Dictio.Twitch
             Console.WriteLine("[DEBUG] Subscription response:");
             Console.WriteLine(responseString);
         }
+        #endregion
     }
 }
