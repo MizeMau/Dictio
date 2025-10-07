@@ -1,6 +1,7 @@
 ﻿using Dictio.Twitch;
 using Dictio.Twitch.Events;
 using Newtonsoft.Json;
+using System.Diagnostics;
 
 namespace Dictio
 {
@@ -11,8 +12,30 @@ namespace Dictio
         private static TTS.F5ttsClient _tts;
         static void Main(string[] args)
         {
-            string channel = "mizemauu";
-            _twitchEventSubWebSocket = new TwitchEventSubWebSocket();
+            var settings = Settings.ReadSettings();
+            if (settings == null)
+            {
+                Console.Clear();
+                Console.WriteLine("Enter your BroadcasterID (if you dont know what your ID is then input nothing):");
+                string broadcasterID = Console.ReadLine() ?? "";
+                if (broadcasterID == "")
+                {
+                    Process.Start(new ProcessStartInfo("https://www.streamweasels.com/tools/convert-twitch-username-%20to-user-id/") { UseShellExecute = true });
+                    Console.WriteLine("You can get the Broadcaster ID on this website, input the Broadcaster ID now:");
+                    broadcasterID = Console.ReadLine() ?? "";
+                }
+                Console.WriteLine("Do you want to use TTS? (y/n):");
+                string useTTSInput = Console.ReadLine() ?? "n";
+                bool useTTS = useTTSInput.ToLower() == "y";
+                settings = new Settings.Model
+                {
+                    BroadcasterID = broadcasterID,
+                    UseTTS = useTTS
+                };
+                Settings.WriteSettings(settings);
+            }
+
+            _twitchEventSubWebSocket = new TwitchEventSubWebSocket(settings!.BroadcasterID);
             _twitchEventSubWebSocket.OnMessageRecieved += OnMessageRecieved;
             _twitchEventSubWebSocket.OnMessageDeleteRecieved += OnMessageDeleteRecieved;
             _twitchEventSubWebSocket.OnFollowerRecieved += OnFollowerRecieved;
@@ -20,10 +43,11 @@ namespace Dictio
 
             _websocket = new Websites.WebSocket();
 
-            //new Twitch.Client(channel);
-
-            _tts = new TTS.F5ttsClient();
-            _tts.PlayText($"Listening to {channel}").GetAwaiter().GetResult();
+            if (settings.UseTTS)
+            {
+                _tts = new TTS.F5ttsClient();
+                _tts.PlayText($"Listening to Broadcaster {settings!.BroadcasterID}").GetAwaiter().GetResult();
+            }
 
 #if DEBUG
             _ = Task.Run(Commands);
@@ -50,7 +74,7 @@ namespace Dictio
                 message += twitchChatMessageFragments.Text;
             }
             if (message.ToLower() == "xd") return;
-            _tts.PlayText(message).GetAwaiter().GetResult();
+            _tts?.PlayText(message).GetAwaiter().GetResult();
         }
         private static void OnMessageDeleteRecieved(object? sender, TwitchChatMessageDelete twitchChatMessageDelete)
         {
@@ -63,7 +87,7 @@ namespace Dictio
             _websocket.SendMessage(messageJSON);
 
             string message = $"{twitchFollower.UserName} followed!";
-            _tts.PlayText(message).GetAwaiter().GetResult();
+            _tts?.PlayText(message).GetAwaiter().GetResult();
         }
         private static void OnRaidRecieved(object? sender, TwitchRaid twitchRaid)
         {
@@ -71,7 +95,7 @@ namespace Dictio
             _websocket.SendMessage(messageJSON);
 
             string message = $"{twitchRaid.FromBroadcasterUserName} Raided the stream with {twitchRaid.Viewers} Views!";
-            _tts.PlayText(message).GetAwaiter().GetResult();
+            _tts?.PlayText(message).GetAwaiter().GetResult();
         }
     }
 }

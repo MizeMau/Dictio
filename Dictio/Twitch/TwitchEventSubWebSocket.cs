@@ -29,7 +29,7 @@ namespace Dictio.Twitch
         public EventHandler<TwitchFollower> OnFollowerRecieved;
         public EventHandler<TwitchRaid> OnRaidRecieved;
 
-        public TwitchEventSubWebSocket()
+        public TwitchEventSubWebSocket(string broadcasterId)
         {
             _client = new ClientWebSocket();
 
@@ -48,7 +48,7 @@ namespace Dictio.Twitch
             }
             _clientId = clientId;
 
-            _broadcasterId = "441477997";
+            _broadcasterId = broadcasterId;
             _moderatorId = _broadcasterId;
 
             Connect().GetAwaiter().GetResult();
