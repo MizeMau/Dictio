@@ -123,6 +123,9 @@ namespace Dictio.Twitch
                     Console.WriteLine("[ERROR] Failed to parse JSON: " + ex.Message);
                 }
             }
+
+            await Connect();
+            ReaderWorkerTask = Task.Run(ReaderWorker);
         }
         private void HandleMessage(JsonElement payload)
         {
@@ -264,9 +267,6 @@ namespace Dictio.Twitch
             {
                 Console.WriteLine($"[ERROR] Subscription failed: {response.StatusCode}");
             }
-
-            Console.WriteLine("[DEBUG] Subscription response:");
-            Console.WriteLine(responseString);
         }
         #endregion
     }

@@ -20,7 +20,7 @@ namespace Dictio
 
             _websocket = new Websites.WebSocket();
 
-            new Twitch.Client(channel);
+            //new Twitch.Client(channel);
 
             _tts = new TTS.F5ttsClient();
             _tts.PlayText($"Listening to {channel}").GetAwaiter().GetResult();
@@ -49,7 +49,6 @@ namespace Dictio
                 if (twitchChatMessageFragments.Type != "text") continue;
                 message += twitchChatMessageFragments.Text;
             }
-            if (twitchChatMessage.ChatterUserLogin == "mizemauu") return;
             if (message.ToLower() == "xd") return;
             _tts.PlayText(message).GetAwaiter().GetResult();
         }
