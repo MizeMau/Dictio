@@ -27,4 +27,3 @@ if defined LINE (
     echo Token line not found.
 )
 
-pause
