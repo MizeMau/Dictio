@@ -20,7 +20,7 @@ namespace Dictio.Twitch
         private readonly ClientWebSocket _client;
 
         public Task ReaderWorkerTask;
-
+        [Obsolete]
         public Client(string channel, string usernameBot = "mizemauu")
         {
             _client = new ClientWebSocket();

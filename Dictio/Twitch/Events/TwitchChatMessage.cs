@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Text;
 using System.Text.Json.Serialization;
@@ -105,6 +106,10 @@ namespace Dictio.Twitch.Events
     {
         [JsonPropertyName("set_id")]
         public string SetId { get; set; }
+        [NotMapped]
+        public string VersionId { get; set; } = "1";
+        [NotMapped]
+        public string Url { get; set; }
 
         [JsonPropertyName("id")]
         public string Id { get; set; }

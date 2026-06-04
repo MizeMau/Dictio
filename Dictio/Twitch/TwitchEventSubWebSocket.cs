@@ -22,6 +22,8 @@ namespace Dictio.Twitch
         private readonly string _broadcasterId; // Channel ID to watch follows for
         private readonly string _moderatorId;   // Usually same as broadcaster, unless you want another moderator
 
+        private readonly BadgeService _badgeService;   // Usually same as broadcaster, unless you want another moderator
+
         public Task ReaderWorkerTask;
 
         public EventHandler<TwitchChatMessage> OnMessageRecieved;
@@ -40,7 +42,7 @@ namespace Dictio.Twitch
                 throw new ArgumentException("OAuth token is not set in the environment variable 'TwitchChat'.");
             }
             _oauthToken = oauthToken;
-            string? clientId = Environment.GetEnvironmentVariable("TwitchCliend")
+            string? clientId = Environment.GetEnvironmentVariable("TwitchClientID")
                 ?.Trim();
             if (string.IsNullOrEmpty(clientId))
             {
@@ -48,10 +50,21 @@ namespace Dictio.Twitch
             }
             _clientId = clientId;
 
+            string? clientSecretId = Environment.GetEnvironmentVariable("TwitchClientSecretID")
+                ?.Trim();
+            if (string.IsNullOrEmpty(clientSecretId))
+            {
+                throw new ArgumentException("OAuth token is not set in the environment variable 'TwitchChat'.");
+            }
+
             _broadcasterId = broadcasterId;
             _moderatorId = _broadcasterId;
 
             Connect().GetAwaiter().GetResult();
+
+            _badgeService = new BadgeService(new HttpClient(), clientId, clientSecretId);
+            _badgeService.LoadAsync(broadcasterId).GetAwaiter().GetResult();
+
             ReaderWorkerTask = Task.Run(ReaderWorker);
         }
 
@@ -140,8 +153,11 @@ namespace Dictio.Twitch
                 case "channel.chat.message":
                     eventData = payload.GetProperty("event");
                     var twitchChatMessage = JsonSerializer.Deserialize<TwitchChatMessage>(eventData);
+                    foreach (var badge in twitchChatMessage.Badges)
+                    {
+                        badge.Url = _badgeService.GetBadgeUrl(badge.SetId, badge.VersionId);
+                    }
                     OnMessageRecieved.Invoke(this, twitchChatMessage);
-
                     Console.WriteLine($"[CHAT] {twitchChatMessage.ChatterUserName}: {twitchChatMessage.Message}");
                     break;
                 case "channel.chat.message_delete":
@@ -215,7 +231,7 @@ namespace Dictio.Twitch
                 condition = new
                 {
                     broadcaster_user_id = _broadcasterId,
-                    user_id = _moderatorId, // can be same as broadcaster if you want your own chat
+                    user_id = _broadcasterId, // can be same as broadcaster if you want your own chat
                     moderator_user_id = _moderatorId
                 },
                 transport = new

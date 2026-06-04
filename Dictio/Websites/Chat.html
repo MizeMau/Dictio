@@ -7,13 +7,23 @@
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
   <style>
     body {
-      background-color: blue;
+      background-color: #2b2a33;
+    }
+    .message-container {
+      margin-bottom: 8px;
     }
     .message {
       font-family: "Montserrat";
-      font-size: 1rem;
+      font-size: 23px;
       animation: fadeIn 1s ease;
-      padding-bottom: 1rem;
+      background: rgba(0, 0, 0, 0.55);
+      border-radius: 6px;
+      max-width: 450px;
+      display:inline-block;
+      padding-top: 5px;
+      padding-bottom: 5px;
+      padding-left: 10px;
+      padding-right: 10px;
     }
     .fade-in {
       animation: fadeIn 0.5s ease;
@@ -30,11 +40,10 @@
     }
     .username {
       font-weight: bold;
-      text-shadow: 0 0 0px #FFF, 0 0 10px #660066;
     }
     .message-text {
-      color: #FFFFFF;
-      text-shadow: 0 0 5px #FFF, 0 0 10px #FFF, 0 0 20px #660066, 0 0 30px #660066, 0 0 40px #660066;
+      color: rgba(255, 255, 255, 0.9);
+      overflow-wrap: break-word;
     }
     .fade-out {
       animation: fadeOut 0.5s ease forwards;
@@ -94,23 +103,6 @@
     }
     const messagesContainer = document.getElementById('messagesContainer')
 
-    const badges = new Map();
-    badges.set("broadcaster", "https://static-cdn.jtvnw.net/badges/v1/5527c58c-fb7d-422d-b71b-f309dcb85cc1/1"); // ✅
-    badges.set("twitch_staff", "https://static-cdn.jtvnw.net/badges/v1/d97c37bd-a6f5-4c38-8f57-4e4bef88af34/1");
-    badges.set("moderator", "https://static-cdn.jtvnw.net/badges/v1/3267646d-33f0-4b17-b3df-f923a41db1d0/1"); // ✅
-    badges.set("partner", "https://static-cdn.jtvnw.net/badges/v1/d12a2e27-16f6-41d0-ab77-b780518f00a3/3");
-    badges.set("vip", "https://static-cdn.jtvnw.net/badges/v1/b817aba4-fad8-49e2-b88a-7cc744dfa6ec/3");
-    badges.set("ambassador", "https://assets.help.twitch.tv/article/img/ambassador-badge.png");
-    badges.set("dj", "https://assets.help.twitch.tv/article/img/DJ-badge.png");
-    badges.set("chat_bot", "https://assets.help.twitch.tv/article/img/000002722-19.png");
-    badges.set("artist", "https://assets.help.twitch.tv/article/img/000002399-05.png");
-    badges.set("no_video", "https://assets.help.twitch.tv/article/img/659115-05.png"); // ✅
-    badges.set("no_audio", "https://assets.help.twitch.tv/article/img/659115-04.png"); // ✅
-    badges.set("turbo", "https://static-cdn.jtvnw.net/badges/v1/bd444ec6-8f34-4bf9-91f4-af1e3428d80f/1");
-    badges.set("premium", "https://static-cdn.jtvnw.net/badges/v1/a1dd5073-19c3-4911-8cb4-c464a7bc1510/1"); // ✅
-    badges.set("rplace-2023", "https://static-cdn.jtvnw.net/badges/v1/e33e0c67-c380-4241-828a-099c46e51c66/1"); // ✅
-    badges.set("twitch-recap-2024", "https://static-cdn.jtvnw.net/badges/v1/72f2a6ac-3d9b-4406-b9e9-998b27182f61/1"); // ✅
-
     function renderRaid(message) {
       const container = document.getElementById('RaidContainer')
       const userName = document.getElementById('RaidUserName')
@@ -145,15 +137,14 @@
       }, 10000);
     }
     function renderMessage(message) {
-      const messageEl = document.createElement('div');
-      messageEl.id = message.MessageId
+      const messageEl = document.createElement('span');
       messageEl.className = 'message';
 
       // --- BADGES ---
       if (message.Badges && Array.isArray(message.Badges)) {
         message.Badges.forEach(badge => {
           const badgeImg = document.createElement('img');
-          badgeImg.src = `${badges.get(badge.SetId)}`;
+          badgeImg.src = badge.Url;
           badgeImg.style.height = "18px";
           badgeImg.style.marginRight = "4px";
           messageEl.appendChild(badgeImg);
@@ -199,11 +190,18 @@
       });
 
       messageEl.appendChild(messageText);
-      messagesContainer.insertBefore(messageEl, messagesContainer.firstChild);
+
+      const messageContainerEl = document.createElement('div');
+
+      messageContainerEl.appendChild(messageEl);
+      messageContainerEl.id = message.MessageId
+      messageContainerEl.className = 'message-container';
+
+      messagesContainer.insertBefore(messageContainerEl, messagesContainer.firstChild);
 
       setTimeout(() => {
-        messageEl.classList.add('fade-out');
-        messageEl.addEventListener('animationend', () => {
+        messageContainerEl.classList.add('fade-out');
+        messageContainerEl.addEventListener('animationend', () => {
           messageEl.remove();
         });
       }, 120000);

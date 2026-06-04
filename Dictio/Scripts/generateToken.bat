@@ -26,4 +26,3 @@ if defined LINE (
     echo.
     echo Token line not found.
 )
-
