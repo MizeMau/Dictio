@@ -61,6 +61,9 @@ namespace Dictio
             {
                 string input = Console.ReadLine();
                 if (string.IsNullOrWhiteSpace(input)) continue;
+                var test = new TwitchFollower();
+                test.UserName = "thisIsWA";
+                OnFollowerRecieved(null, test);
             }
         }
         private static void OnMessageRecieved(object? sender, TwitchChatMessage twitchChatMessage)
@@ -73,7 +76,6 @@ namespace Dictio
                 if (twitchChatMessageFragments.Type != "text") continue;
                 message += twitchChatMessageFragments.Text;
             }
-            if (message.ToLower() == "xd") return;
             _tts?.PlayText(message).GetAwaiter().GetResult();
         }
         private static void OnMessageDeleteRecieved(object? sender, TwitchChatMessageDelete twitchChatMessageDelete)
