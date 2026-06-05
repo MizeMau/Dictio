@@ -1,4 +1,5 @@
-﻿using Dictio.Twitch;
+﻿using Dictio.TTS;
+using Dictio.Twitch;
 using Dictio.Twitch.Events;
 using Newtonsoft.Json;
 using System.Diagnostics;
@@ -9,8 +10,8 @@ namespace Dictio
     {
         private static Twitch.TwitchEventSubWebSocket _twitchEventSubWebSocket;
         private static Websites.WebSocket _websocket;
-        private static TTS.F5ttsClient _tts;
-        static void Main(string[] args)
+        private static TtsClient _ttsClient;
+        static async Task Main(string[] args)
         {
             var settings = Settings.ReadSettings();
             if (settings == null)
@@ -35,6 +36,24 @@ namespace Dictio
                 Settings.WriteSettings(settings);
             }
 
+            using var server = new ServerManager();
+            if (settings.UseTTS)
+            {
+                await server.StartAsync();
+
+                Console.CancelKeyPress += (_, e) =>
+                {
+                    e.Cancel = true;
+                    Console.WriteLine("\n[App] Shutting down …");
+                    server.Dispose();
+                    Environment.Exit(0);
+                };
+
+                _ttsClient = new TtsClient(server.BaseUrl);
+
+                await _ttsClient.Say($"Listening to Broadcaster {settings!.BroadcasterID}");
+            }
+
             _twitchEventSubWebSocket = new TwitchEventSubWebSocket(settings!.BroadcasterID);
             _twitchEventSubWebSocket.OnMessageRecieved += OnMessageRecieved;
             _twitchEventSubWebSocket.OnMessageDeleteRecieved += OnMessageDeleteRecieved;
@@ -43,30 +62,23 @@ namespace Dictio
 
             _websocket = new Websites.WebSocket();
 
-            if (settings.UseTTS)
-            {
-                _tts = new TTS.F5ttsClient();
-                _tts.PlayText($"Listening to Broadcaster {settings!.BroadcasterID}").GetAwaiter().GetResult();
-            }
-
 #if DEBUG
             _ = Task.Run(Commands);
 #endif
 
             Task.Delay(Timeout.Infinite).Wait();
         }
+
         private static async Task Commands()
         {
             while (true)
             {
                 string input = Console.ReadLine();
                 if (string.IsNullOrWhiteSpace(input)) continue;
-                var test = new TwitchFollower();
-                test.UserName = "thisIsWA";
-                OnFollowerRecieved(null, test);
+                await _ttsClient.Say(input);
             }
         }
-        private static void OnMessageRecieved(object? sender, TwitchChatMessage twitchChatMessage)
+        private async static void OnMessageRecieved(object? sender, TwitchChatMessage twitchChatMessage)
         {
             string messageJSON = JsonConvert.SerializeObject(twitchChatMessage);
             _websocket.SendMessage(messageJSON);
@@ -76,28 +88,28 @@ namespace Dictio
                 if (twitchChatMessageFragments.Type != "text") continue;
                 message += twitchChatMessageFragments.Text;
             }
-            _tts?.PlayText(message).GetAwaiter().GetResult();
+            await _ttsClient.Say(message);
         }
-        private static void OnMessageDeleteRecieved(object? sender, TwitchChatMessageDelete twitchChatMessageDelete)
+        private async static void OnMessageDeleteRecieved(object? sender, TwitchChatMessageDelete twitchChatMessageDelete)
         {
             string messageJSON = JsonConvert.SerializeObject(twitchChatMessageDelete);
             _websocket.SendMessage(messageJSON);
         }
-        private static void OnFollowerRecieved(object? sender, TwitchFollower twitchFollower)
+        private async static void OnFollowerRecieved(object? sender, TwitchFollower twitchFollower)
         {
             string messageJSON = JsonConvert.SerializeObject(twitchFollower);
             _websocket.SendMessage(messageJSON);
 
             string message = $"{twitchFollower.UserName} followed!";
-            _tts?.PlayText(message).GetAwaiter().GetResult();
+            await _ttsClient.Say(message);
         }
-        private static void OnRaidRecieved(object? sender, TwitchRaid twitchRaid)
+        private async static void OnRaidRecieved(object? sender, TwitchRaid twitchRaid)
         {
             string messageJSON = JsonConvert.SerializeObject(twitchRaid);
             _websocket.SendMessage(messageJSON);
 
             string message = $"{twitchRaid.FromBroadcasterUserName} Raided the stream with {twitchRaid.Viewers} Views!";
-            _tts?.PlayText(message).GetAwaiter().GetResult();
+            await _ttsClient.Say(message);
         }
     }
 }
