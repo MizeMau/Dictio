@@ -1,35 +1,93 @@
 ﻿using NAudio.Wave;
 using NAudio.Wave.SampleProviders;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Text;
 
 namespace Dictio.TTS
 {
-    public class AudioPlayer
+    public static class AudioPlayer
     {
+        private static readonly BlockingCollection<byte[]> _queue = new(new ConcurrentQueue<byte[]>());
+        private static readonly Thread _playerThread;
+
+        static AudioPlayer()
+        {
+            _playerThread = new Thread(ProcessQueue)
+            {
+                IsBackground = true,
+                Name = "AudioPlayerThread"
+            };
+            _playerThread.Start();
+        }
+
+        /// <summary>
+        /// Enqueues audio for playback. Drops the request if it waits more than 30 seconds.
+        /// </summary>
         public static void Play(byte[] wavBytes)
+        {
+            // Use a SemaphoreSlim as a "slot ticket" so the caller can wait with a timeout.
+            var slot = new SemaphoreSlim(0, 1);
+
+            // Wrap the audio with its slot so the player thread can release it when ready.
+            _pendingSlots.Enqueue((wavBytes, slot));
+
+            bool admitted = slot.Wait(TimeSpan.FromMinutes(2));
+
+            if (!admitted)
+            {
+                // Timed out — mark it cancelled so the player thread skips it.
+                lock (_cancelledSlots)
+                    _cancelledSlots.Add(slot);
+            }
+        }
+
+        private static readonly ConcurrentQueue<(byte[] wav, SemaphoreSlim slot)> _pendingSlots = new();
+        private static readonly HashSet<SemaphoreSlim> _cancelledSlots = new();
+
+        private static void ProcessQueue()
+        {
+            while (true)
+            {
+                // Spin until there's something to process.
+                if (!_pendingSlots.TryDequeue(out var item))
+                {
+                    Thread.Sleep(10);
+                    continue;
+                }
+
+                var (wavBytes, slot) = item;
+
+                bool isCancelled;
+                lock (_cancelledSlots)
+                    isCancelled = _cancelledSlots.Remove(slot);
+
+                if (isCancelled)
+                    continue; // Skip — caller already gave up.
+
+                // Signal the caller that playback is starting (they've been admitted).
+                slot.Release();
+
+                // Play synchronously — next item won't dequeue until this finishes.
+                PlayInternal(wavBytes);
+            }
+        }
+
+        private static void PlayInternal(byte[] wavBytes)
         {
             using var ms = new MemoryStream(wavBytes);
             using var reader = new WaveFileReader(ms);
             using var output = new WaveOutEvent();
 
             output.Init(reader);
-            output.Volume = 1f; // Max volume
-                                  // Use a ManualResetEvent so we can wait for playback to finish cleanly.
+            output.Volume = 1f;
+
             using var finished = new ManualResetEventSlim(false);
             output.PlaybackStopped += (_, _) => finished.Set();
 
             output.Play();
             finished.Wait();
-        }
-
-        /// <summary>
-        /// Saves <paramref name="wavBytes"/> to <paramref name="filePath"/>.
-        /// </summary>
-        public static async Task SaveAsync(byte[] wavBytes, string filePath, CancellationToken ct = default)
-        {
-            await File.WriteAllBytesAsync(filePath, wavBytes, ct);
         }
     }
 }

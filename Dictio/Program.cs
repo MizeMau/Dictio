@@ -11,6 +11,12 @@ namespace Dictio
         private static Twitch.TwitchEventSubWebSocket _twitchEventSubWebSocket;
         private static Websites.WebSocket _websocket;
         private static TtsClient _ttsClient;
+
+        private static float _exaggeration = 1f;
+        private static float _cfgWeight = 0.05f;
+        private static float _temperature = 0.45f;
+        private static float _topP = 0.87f;
+
         static async Task Main(string[] args)
         {
             var settings = Settings.ReadSettings();
@@ -65,8 +71,7 @@ namespace Dictio
 #if DEBUG
             _ = Task.Run(Commands);
 #endif
-
-            Task.Delay(Timeout.Infinite).Wait();
+            await Task.Delay(Timeout.Infinite);
         }
 
         private static async Task Commands()
@@ -75,7 +80,7 @@ namespace Dictio
             {
                 string input = Console.ReadLine();
                 if (string.IsNullOrWhiteSpace(input)) continue;
-                await _ttsClient.Say(input);
+                await _ttsClient.Say(input, _exaggeration, _cfgWeight, _temperature, _topP);
             }
         }
         private async static void OnMessageRecieved(object? sender, TwitchChatMessage twitchChatMessage)
@@ -88,7 +93,7 @@ namespace Dictio
                 if (twitchChatMessageFragments.Type != "text") continue;
                 message += twitchChatMessageFragments.Text;
             }
-            await _ttsClient.Say(message);
+            await _ttsClient.Say(message, _exaggeration, _cfgWeight, _temperature, _topP);
         }
         private async static void OnMessageDeleteRecieved(object? sender, TwitchChatMessageDelete twitchChatMessageDelete)
         {
@@ -101,7 +106,7 @@ namespace Dictio
             _websocket.SendMessage(messageJSON);
 
             string message = $"{twitchFollower.UserName} followed!";
-            await _ttsClient.Say(message);
+            await _ttsClient.Say(message, _exaggeration, _cfgWeight, _temperature, _topP);
         }
         private async static void OnRaidRecieved(object? sender, TwitchRaid twitchRaid)
         {
@@ -109,7 +114,7 @@ namespace Dictio
             _websocket.SendMessage(messageJSON);
 
             string message = $"{twitchRaid.FromBroadcasterUserName} Raided the stream with {twitchRaid.Viewers} Views!";
-            await _ttsClient.Say(message);
+            await _ttsClient.Say(message, _exaggeration, _cfgWeight, _temperature, _topP);
         }
     }
 }

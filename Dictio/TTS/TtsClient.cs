@@ -60,14 +60,7 @@ namespace Dictio.TTS
             if (string.IsNullOrWhiteSpace(text))
                 throw new ArgumentException("Text must not be empty.", nameof(text));
 
-            var payload = new TtsRequest
-            {
-                Text = text,
-                Exaggeration = exaggeration,
-                CfgWeight = cfgWeight,
-                Temperature = temperature,
-                TopP = topP,
-            };
+            var payload = new TtsRequest(text, exaggeration, cfgWeight, temperature, topP);
 
             var resp = await _http.PostAsJsonAsync("/tts", payload, ct);
 
@@ -82,9 +75,13 @@ namespace Dictio.TTS
             return Convert.FromBase64String(result.AudioB64);
         }
 
-        public async Task Say(string text)
+        public async Task Say(string text,
+            float exaggeration = 0.4f,
+            float cfgWeight = 0.7f,
+            float temperature = 0.8f,
+            float topP = 0.95f)
         {
-            var wav = await SynthesiseAsync(text);
+            var wav = await SynthesiseAsync(text, exaggeration, cfgWeight, temperature, topP);
             AudioPlayer.Play(wav);
         }
 
@@ -93,31 +90,23 @@ namespace Dictio.TTS
         // -----------------------------------------------------------------------
         // DTOs
         // -----------------------------------------------------------------------
-        private sealed class TtsRequest
-        {
-            [JsonPropertyName("text")] public string Text { get; init; } = "";
-            [JsonPropertyName("exaggeration")] public float Exaggeration { get; init; } = 0.4f;
-            [JsonPropertyName("cfg_weight")] public float CfgWeight { get; init; } = 0.7f;
-            [JsonPropertyName("temperature")] public float Temperature { get; init; } = 0.8f;
-            [JsonPropertyName("top_p")] public float TopP { get; init; } = 0.95f;
-        }
-
-        private sealed class TtsResponse
-        {
-            [JsonPropertyName("audio_b64")] public string AudioB64 { get; init; } = "";
-            [JsonPropertyName("sample_rate")] public int SampleRate { get; init; }
-            [JsonPropertyName("device")] public string Device { get; init; } = "";
-        }
-
-        public sealed class HealthInfo
-        {
-            [JsonPropertyName("status")] public string Status { get; init; } = "";
-            [JsonPropertyName("device")] public string Device { get; init; } = "";
-            [JsonPropertyName("cuda_device_name")] public string CudaDeviceName { get; init; } = "";
-            [JsonPropertyName("model_loaded")] public bool ModelLoaded { get; init; }
-            [JsonPropertyName("voice_wav")] public string VoiceWav { get; init; } = "";
-            [JsonPropertyName("voice_wav_exists")] public bool VoiceWavExists { get; init; }
-        }
+        public record TtsRequest(
+            [property: JsonPropertyName("text")] string Text,
+            [property: JsonPropertyName("exaggeration")] float Exaggeration,
+            [property: JsonPropertyName("cfg_weight")] float CfgWeight,
+            [property: JsonPropertyName("temperature")] float Temperature,
+            [property: JsonPropertyName("top_p")] float TopP);
+        public record TtsResponse(
+            [property: JsonPropertyName("audio_b64")] string AudioB64,
+            [property: JsonPropertyName("sample_rate")] int SampleRate,
+            [property: JsonPropertyName("device")] string Device);
+        public record HealthInfo(
+            [property: JsonPropertyName("status")] string Status,
+            [property: JsonPropertyName("device")] int Device,
+            [property: JsonPropertyName("cuda_device_name")] int CudaDeviceName,
+            [property: JsonPropertyName("model_loaded")] int ModelLoaded,
+            [property: JsonPropertyName("voice_wav")] int VoiceWav,
+            [property: JsonPropertyName("voice_wav_exists")] string VoiceWavExists);
     }
 
 }
